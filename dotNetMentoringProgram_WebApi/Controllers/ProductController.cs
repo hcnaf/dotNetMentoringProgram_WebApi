@@ -1,6 +1,8 @@
 ﻿using dotNetMentoringProgram_WebApi.Context;
 using dotNetMentoringProgram_WebApi.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using static dotNetMentoringProgram_WebApi.QueryParamenters;
 
 namespace dotNetMentoringProgram_WebApi.Controllers
 {
@@ -16,75 +18,89 @@ namespace dotNetMentoringProgram_WebApi.Controllers
         }
 
         [HttpGet]
-        public ActionResult<IEnumerable<Product>> GetProducts(int pageNumber = 1, int pageSize = 10,
-            int? categoryId = null)
+        public async Task<ActionResult<IEnumerable<Product>>> GetProducts([FromQuery] QueryParameters parameters)
         {
-            IQueryable<Product> products = _context.Products;
-            if (categoryId != null)
+            var products = _context.Products.AsQueryable();
+
+            if (parameters.CategoryId.HasValue)
             {
-                products = products.Where(x => x.CategoryId == categoryId);
+                products = products.Where(x => x.CategoryId == parameters.CategoryId.Value);
             }
 
-            products = products
-                .Skip(pageSize * (pageNumber - 1))
-                .Take(pageSize);
+            if (parameters.PageNumber.HasValue && parameters.PageSize.HasValue)
+            {
+                products = products
+                    .Skip((parameters.PageNumber.Value - 1) * parameters.PageSize.Value)
+                    .Take(parameters.PageSize.Value);
+            }
 
-            return Ok(products.ToList());
+            return Ok(await products.ToListAsync());
         }
 
-        [HttpGet("{id}")]
-        public ActionResult<Product> GetProduct(int id)
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<Product>> Get(int id)
         {
-            var product = _context.Products.Find(id);
-            if (product == null)
+            var product = await _context.Products.FindAsync(id);
+            if (product is null)
             {
                 return NotFound();
             }
-
             return Ok(product);
         }
-
         [HttpPost]
-        public ActionResult<Product> PostProduct([FromBody] Product product)
+        public async Task<ActionResult<Product>> Create([FromBody] Product product)
         {
-            _context.Products.Add(product);
-            _context.SaveChanges();
-            return CreatedAtAction(nameof(GetProduct), new { id = product.ProductId }, product);
+            try
+            {
+                await _context.Products.AddAsync(product);
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(GetProducts));
+            }
+            catch
+            {
+                return BadRequest();
+            }
         }
-
-        [HttpPut("{id}")]
-        public ActionResult PutProduct(int id, [FromBody] Product product)
+        [HttpPut("{id:int}")]
+        public async Task<ActionResult<Product>> Edit(int id, [FromBody] Product product)
         {
             if (id != product.ProductId)
             {
                 return BadRequest();
             }
-
-            var toUpdate = _context.Products.Find(id);
-            if (toUpdate != null)
-            {
-                _context.Entry(toUpdate).CurrentValues.SetValues(product);
-                _context.SaveChanges();
-                return NoContent();
-            }
-
-            return NotFound();
-        }
-
-        [HttpDelete("{id}")]
-        public ActionResult DeleteProduct(int id)
-        {
-            var product = _context.Products.Find(id);
-
-            if (product == null)
+            if (!_context.Products.Any(x => x.ProductId == id))
             {
                 return NotFound();
             }
-
-            _context.Products.Remove(product);
-            _context.SaveChanges();
-
-            return NoContent();
+            try
+            {
+                _context.Products.Update(product);
+                await _context.SaveChangesAsync();
+                return NoContent();
+            }
+            catch (Exception)
+            {
+                return BadRequest();
+            }
+        }
+        [HttpDelete("{id:int}")]
+        public async Task<ActionResult<Product>> Delete(int id)
+        {
+            var productInDb = await _context.Products.FindAsync(id);
+            if (productInDb == null)
+            {
+                return NotFound();
+            }
+            try
+            {
+                _context.Products.Remove(productInDb);
+                await _context.SaveChangesAsync();
+                return productInDb;
+            }
+            catch
+            {
+                return BadRequest();
+            }
         }
     }
 }
