@@ -1,5 +1,7 @@
 ﻿using dotNetMentoringProgram_WebApi.Context;
+using dotNetMentoringProgram_WebApi.Mappers;
 using dotNetMentoringProgram_WebApi.Models;
+using dotNetMentoringProgram_WebApi.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using static dotNetMentoringProgram_WebApi.QueryParamenters;
@@ -18,7 +20,7 @@ namespace dotNetMentoringProgram_WebApi.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Product>>> GetProducts([FromQuery] QueryParameters parameters)
+        public async Task<ActionResult<IEnumerable<ProductVM>>> GetProducts([FromQuery] QueryParameters parameters)
         {
             var products = _context.Products.AsQueryable();
 
@@ -34,25 +36,27 @@ namespace dotNetMentoringProgram_WebApi.Controllers
                     .Take(parameters.PageSize.Value);
             }
 
-            return Ok(await products.ToListAsync());
+            var productVMs = (await products.ToListAsync()).Select(x => x.ToProductVM());
+
+            return Ok(productVMs);
         }
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<Product>> Get(int id)
+        public async Task<ActionResult<ProductVM>> Get(int id)
         {
             var product = await _context.Products.FindAsync(id);
             if (product is null)
             {
                 return NotFound();
             }
-            return Ok(product);
+            return Ok(product.ToProductVM());
         }
         [HttpPost]
-        public async Task<ActionResult<Product>> Create([FromBody] Product product)
+        public async Task<ActionResult<ProductVM>> Create([FromBody] ProductVM product)
         {
             try
             {
-                await _context.Products.AddAsync(product);
+                await _context.Products.AddAsync(product.ToProduct());
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(GetProducts));
             }
@@ -62,7 +66,7 @@ namespace dotNetMentoringProgram_WebApi.Controllers
             }
         }
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<Product>> Edit(int id, [FromBody] Product product)
+        public async Task<ActionResult<Product>> Edit(int id, [FromBody] ProductVM product)
         {
             if (id != product.ProductId)
             {
@@ -74,7 +78,7 @@ namespace dotNetMentoringProgram_WebApi.Controllers
             }
             try
             {
-                _context.Products.Update(product);
+                _context.Products.Update(product.ToProduct());
                 await _context.SaveChangesAsync();
                 return NoContent();
             }
@@ -84,7 +88,7 @@ namespace dotNetMentoringProgram_WebApi.Controllers
             }
         }
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<Product>> Delete(int id)
+        public async Task<ActionResult<ProductVM>> Delete(int id)
         {
             var productInDb = await _context.Products.FindAsync(id);
             if (productInDb == null)
@@ -95,7 +99,7 @@ namespace dotNetMentoringProgram_WebApi.Controllers
             {
                 _context.Products.Remove(productInDb);
                 await _context.SaveChangesAsync();
-                return productInDb;
+                return productInDb.ToProductVM();
             }
             catch
             {

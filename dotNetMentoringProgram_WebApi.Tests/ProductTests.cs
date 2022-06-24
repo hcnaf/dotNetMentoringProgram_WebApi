@@ -47,7 +47,6 @@ namespace dotNetMentoringProgram_WebApi.Tests
         {
             var product = new Product()
             {
-                ProductId = 9999,
                 ProductName = "TestProduct",
                 CategoryId = 1,
                 Discontinued = true,

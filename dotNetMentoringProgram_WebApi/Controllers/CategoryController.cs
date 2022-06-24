@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using dotNetMentoringProgram_WebApi.Context;
-using dotNetMentoringProgram_WebApi.Models;
+using dotNetMentoringProgram_WebApi.ViewModels;
+using dotNetMentoringProgram_WebApi.Mappers;
 
 namespace ShopWdotNetMentoringProgram_WebApiebApi.Controllers
 {
@@ -17,14 +18,14 @@ namespace ShopWdotNetMentoringProgram_WebApiebApi.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
+        public async Task<ActionResult<IEnumerable<CategoryVM>>> GetCategories()
         {
             var allCategories = await _context.Categories.ToListAsync();
-            return Ok(allCategories);
+            return Ok(allCategories.Select(x => x.ToCategoryVM()));
         }
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<Category>> Get(int id)
+        public async Task<ActionResult<CategoryVM>> Get(int id)
         {
             var category = await _context.Categories.FindAsync(id);
 
@@ -33,15 +34,15 @@ namespace ShopWdotNetMentoringProgram_WebApiebApi.Controllers
                 return NotFound();
             }
 
-            return Ok(category);
+            return Ok(category.ToCategoryVM());
         }
 
         [HttpPost]
-        public async Task<ActionResult<Category>> Create([FromBody] Category category)
+        public async Task<ActionResult<CategoryVM>> Create([FromBody] CategoryVM category)
         {
             try
             {
-                await _context.Categories.AddAsync(category);
+                await _context.Categories.AddAsync(category.ToCategory());
                 await _context.SaveChangesAsync();
 
                 return RedirectToAction(nameof(GetCategories));
@@ -53,7 +54,7 @@ namespace ShopWdotNetMentoringProgram_WebApiebApi.Controllers
         }
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<Category>> Edit(int id, [FromBody] Category category)
+        public async Task<ActionResult<CategoryVM>> Edit(int id, [FromBody] CategoryVM category)
         {
             if (id != category.CategoryId)
             {
@@ -67,7 +68,7 @@ namespace ShopWdotNetMentoringProgram_WebApiebApi.Controllers
 
             try
             {
-                _context.Categories.Update(category);
+                _context.Categories.Update(category.ToCategory());
                 await _context.SaveChangesAsync();
 
                 return NoContent();
@@ -79,7 +80,7 @@ namespace ShopWdotNetMentoringProgram_WebApiebApi.Controllers
         }
 
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<Category>> Delete(int id)
+        public async Task<ActionResult<CategoryVM>> Delete(int id)
         {
             var categoryInDb = await _context.Categories.FindAsync(id);
             if (categoryInDb == null)
@@ -91,7 +92,7 @@ namespace ShopWdotNetMentoringProgram_WebApiebApi.Controllers
                 _context.Categories.Remove(categoryInDb);
                 await _context.SaveChangesAsync();
 
-                return categoryInDb;
+                return categoryInDb.ToCategoryVM();
             }
             catch
             {
